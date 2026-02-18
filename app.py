@@ -97,5 +97,32 @@ if st.button("Analyze"):
         fake_prob = round(prob[0][1] * 100, 2)
         genuine_prob = round(prob[0][0] * 100, 2)
 
-        if pre
+        if prediction[0] == 1:
+            st.error(f"⚠️ Fake Job Offer Detected ({fake_prob}%)")
+        else:
+            st.success(f"✅ Genuine Job Offer ({genuine_prob}%)")
+
+st.markdown("---")
+
+# ---------------- SIMPLE CHATBOT ----------------
+st.subheader("🤖 Job Safety Chatbot")
+
+question = st.text_input("Ask something about job safety")
+
+if question:
+    q = question.lower()
+
+    if "fee" in q:
+        st.write("Never pay registration or interview fees.")
+    elif "otp" in q:
+        st.write("Do not share OTP with anyone.")
+    elif "bank" in q:
+        st.write("Do not share banking details.")
+    elif "domain" in q:
+        st.write("Verify official company website domain.")
+    else:
+        st.write("Always verify job offers from official company websites.")
+
+st.markdown("---")
+st.caption("Developed using Machine Learning & NLP | TYBCA 2026")
 
