@@ -1,13 +1,25 @@
 import streamlit as st
 import pandas as pd
 import re
+import matplotlib.pyplot as plt
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.naive_bayes import MultinomialNB
+from sklearn.metrics import accuracy_score
 
 st.set_page_config(page_title="Fake Job Scam Detector", layout="centered")
 
+# Dark Theme Styling
+st.markdown("""
+<style>
+body {
+    background-color: #0E1117;
+    color: white;
+}
+</style>
+""", unsafe_allow_html=True)
+
 # Title
-st.markdown("<h1 style='text-align: center; color: #2E8B57;'>Fake Job & Internship Scam Detection System</h1>", unsafe_allow_html=True)
+st.markdown("<h1 style='text-align: center; color: #00FFAA;'>Fake Job & Internship Scam Detection System</h1>", unsafe_allow_html=True)
 
 st.markdown("### JSPM University - TYBCA Final Year Project")
 st.markdown("**Team Members:** Sneha Jha | Sujit | Ashutosh")
@@ -26,10 +38,27 @@ X_vectorized = vectorizer.fit_transform(X)
 model = MultinomialNB()
 model.fit(X_vectorized, y)
 
-# Scam Keywords List
+# Calculate Accuracy
+predictions = model.predict(X_vectorized)
+accuracy = round(accuracy_score(y, predictions) * 100, 2)
+
+st.success(f"Model Accuracy: {accuracy}%")
+
+st.markdown("---")
+
+# Show Dataset Graph
+fake_count = sum(y == 1)
+genuine_count = sum(y == 0)
+
+fig, ax = plt.subplots()
+ax.bar(["Fake", "Genuine"], [fake_count, genuine_count])
+st.pyplot(fig)
+
+st.markdown("---")
+
+# Scam Keywords
 scam_keywords = ["fee", "registration", "OTP", "urgent", "limited seats", "payment", "click here", "guaranteed"]
 
-# URL Detection Function
 def contains_suspicious_url(text):
     urls = re.findall(r'(https?://\S+)', text)
     suspicious = []
@@ -53,42 +82,41 @@ if st.button("Analyze Message"):
         fake_prob = round(probability[0][1] * 100, 2)
         genuine_prob = round(probability[0][0] * 100, 2)
 
-        st.markdown("---")
-
-        # Prediction Result
         if prediction[0] == 1:
-            st.error(f"⚠️ Fake Job Offer Detected! (Confidence: {fake_prob}%)")
+            result_text = f"Fake Job Offer Detected! (Confidence: {fake_prob}%)"
+            st.error(result_text)
         else:
-            st.success(f"✅ Genuine Job Offer (Confidence: {genuine_prob}%)")
+            result_text = f"Genuine Job Offer (Confidence: {genuine_prob}%)"
+            st.success(result_text)
 
-        # URL Detection
         suspicious_urls = contains_suspicious_url(msg)
         if suspicious_urls:
-            st.warning("⚠️ Suspicious URL Detected:")
+            st.warning("Suspicious URL Detected:")
             for url in suspicious_urls:
                 st.write(url)
 
-        # Keyword Highlighting
         detected_keywords = [word for word in scam_keywords if word.lower() in msg.lower()]
         if detected_keywords:
-            st.info(f"⚠️ Scam Related Keywords Found: {', '.join(detected_keywords)}")
+            st.info(f"Scam Keywords Found: {', '.join(detected_keywords)}")
 
-        st.markdown("---")
-        st.info(f"Fake Probability: {fake_prob}% | Genuine Probability: {genuine_prob}%")
+        # Download Report
+        st.download_button(
+            label="Download Analysis Report",
+            data=result_text,
+            file_name="analysis_report.txt",
+            mime="text/plain"
+        )
 
-# Awareness Section
 st.markdown("---")
-st.subheader("⚠️ Scam Awareness Tips")
 
+st.subheader("⚠️ Scam Awareness Tips")
 st.markdown("""
 - Never pay registration or interview fees.
-- Do not share OTP or personal banking details.
-- Verify company email domain.
+- Do not share OTP or banking details.
+- Verify official company domain.
 - Avoid urgent payment requests.
-- Check company website authenticity.
+- Cross-check job offers on official websites.
 """)
 
 st.markdown("---")
-st.caption("Developed using Machine Learning (Naive Bayes), NLP & Streamlit | 2026 TYBCA Project")
-
-
+st.caption("Developed using Machine Learning, NLP & Streamlit | TYBCA 2026")
