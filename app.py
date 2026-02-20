@@ -1,122 +1,135 @@
 import streamlit as st
 import pandas as pd
-import re
 import matplotlib.pyplot as plt
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.naive_bayes import MultinomialNB
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import accuracy_score, confusion_matrix
 
-st.set_page_config(page_title="Fake Job Scam Detector", layout="centered")
+st.set_page_config(page_title="Fake Job Scam Detector", layout="wide")
 
-# Dark Theme Styling
+# ---------------- CUSTOM CSS ----------------
 st.markdown("""
 <style>
-body {
-    background-color: #0E1117;
+.main {
+    background: linear-gradient(to right, #141E30, #243B55);
     color: white;
 }
+.stButton>button {
+    background-color: #00C9A7;
+    color: black;
+    font-weight: bold;
+    border-radius: 10px;
+    height: 3em;
+    width: 100%;
+}
+.stTextInput>div>div>input, .stTextArea textarea {
+    border-radius: 10px;
+}
+footer {visibility: hidden;}
 </style>
 """, unsafe_allow_html=True)
 
-# Title
-st.markdown("<h1 style='text-align: center; color: #00FFAA;'>Fake Job & Internship Scam Detection System</h1>", unsafe_allow_html=True)
+# ---------------- LOGIN ----------------
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
 
-st.markdown("### JSPM University - TYBCA Final Year Project")
-st.markdown("**Team Members:** Sneha Jha | Sujit | Ashutosh")
+def login():
+    st.markdown("<h1 style='text-align:center;'>🔐 Admin Login</h1>", unsafe_allow_html=True)
+    username = st.text_input("Username")
+    password = st.text_input("Password", type="password")
 
-st.markdown("---")
+    if st.button("Login"):
+        if username == "admin" and password == "jspm123":
+            st.session_state.logged_in = True
+        else:
+            st.error("Invalid Credentials")
 
-# Load Dataset
+if not st.session_state.logged_in:
+    login()
+    st.stop()
+
+# ---------------- SIDEBAR ----------------
+st.sidebar.title("Navigation")
+menu = st.sidebar.radio("Go to", ["Dashboard", "Analyze Message", "Chatbot"])
+st.sidebar.markdown("---")
+if st.sidebar.button("Logout"):
+    st.session_state.logged_in = False
+    st.rerun()
+
+# ---------------- LOAD DATA ----------------
 data = pd.read_csv("dataset.csv")
-X = data['text']
-y = data['label']
+X = data["text"]
+y = data["label"]
 
-# Train Model
 vectorizer = CountVectorizer()
 X_vectorized = vectorizer.fit_transform(X)
 
 model = MultinomialNB()
 model.fit(X_vectorized, y)
 
-# Calculate Accuracy
 predictions = model.predict(X_vectorized)
 accuracy = round(accuracy_score(y, predictions) * 100, 2)
 
-st.success(f"Model Accuracy: {accuracy}%")
+# ---------------- DASHBOARD ----------------
+if menu == "Dashboard":
+    st.markdown("<h1 style='text-align:center;'>📊 Project Dashboard</h1>", unsafe_allow_html=True)
+    st.success(f"Model Accuracy: {accuracy}%")
 
-st.markdown("---")
+    fake_count = sum(y == 1)
+    genuine_count = sum(y == 0)
 
-# Show Dataset Graph
-fake_count = sum(y == 1)
-genuine_count = sum(y == 0)
+    col1, col2 = st.columns(2)
+    col1.metric("Fake Messages", fake_count)
+    col2.metric("Genuine Messages", genuine_count)
 
-fig, ax = plt.subplots()
-ax.bar(["Fake", "Genuine"], [fake_count, genuine_count])
-st.pyplot(fig)
+    fig, ax = plt.subplots()
+    ax.bar(["Fake", "Genuine"], [fake_count, genuine_count])
+    ax.set_facecolor("#243B55")
+    fig.patch.set_facecolor("#243B55")
+    st.pyplot(fig)
 
-st.markdown("---")
+# ---------------- ANALYZE ----------------
+elif menu == "Analyze Message":
+    st.markdown("<h1 style='text-align:center;'>🔍 Analyze Job Message</h1>", unsafe_allow_html=True)
 
-# Scam Keywords
-scam_keywords = ["fee", "registration", "OTP", "urgent", "limited seats", "payment", "click here", "guaranteed"]
+    msg = st.text_area("Enter Job / Internship Message")
 
-def contains_suspicious_url(text):
-    urls = re.findall(r'(https?://\S+)', text)
-    suspicious = []
-    for url in urls:
-        if not any(domain in url for domain in ["tcs.com", "infosys.com", "wipro.com"]):
-            suspicious.append(url)
-    return suspicious
-
-# User Input
-st.subheader("Enter Job / Internship Message Below:")
-msg = st.text_area("")
-
-if st.button("Analyze Message"):
-    if msg.strip() == "":
-        st.warning("Please enter a message first.")
-    else:
-        vect = vectorizer.transform([msg])
-        prediction = model.predict(vect)
-        probability = model.predict_proba(vect)
-
-        fake_prob = round(probability[0][1] * 100, 2)
-        genuine_prob = round(probability[0][0] * 100, 2)
-
-        if prediction[0] == 1:
-            result_text = f"Fake Job Offer Detected! (Confidence: {fake_prob}%)"
-            st.error(result_text)
+    if st.button("Analyze"):
+        if msg.strip() == "":
+            st.warning("Please enter a message.")
         else:
-            result_text = f"Genuine Job Offer (Confidence: {genuine_prob}%)"
-            st.success(result_text)
+            vect = vectorizer.transform([msg])
+            prediction = model.predict(vect)
+            prob = model.predict_proba(vect)
 
-        suspicious_urls = contains_suspicious_url(msg)
-        if suspicious_urls:
-            st.warning("Suspicious URL Detected:")
-            for url in suspicious_urls:
-                st.write(url)
+            fake_prob = round(prob[0][1] * 100, 2)
+            genuine_prob = round(prob[0][0] * 100, 2)
 
-        detected_keywords = [word for word in scam_keywords if word.lower() in msg.lower()]
-        if detected_keywords:
-            st.info(f"Scam Keywords Found: {', '.join(detected_keywords)}")
+            if prediction[0] == 1:
+                st.error(f"⚠️ Fake Job Detected ({fake_prob}%)")
+            else:
+                st.success(f"✅ Genuine Job ({genuine_prob}%)")
 
-        # Download Report
-        st.download_button(
-            label="Download Analysis Report",
-            data=result_text,
-            file_name="analysis_report.txt",
-            mime="text/plain"
-        )
+# ---------------- CHATBOT ----------------
+elif menu == "Chatbot":
+    st.markdown("<h1 style='text-align:center;'>🤖 Job Safety Chatbot</h1>", unsafe_allow_html=True)
 
+    question = st.text_input("Ask something about job safety")
+
+    if question:
+        q = question.lower()
+
+        if "fee" in q:
+            st.info("Never pay registration or interview fees.")
+        elif "otp" in q:
+            st.info("Do not share OTP with anyone.")
+        elif "bank" in q:
+            st.info("Never share banking details.")
+        elif "domain" in q:
+            st.info("Verify company domain carefully.")
+        else:
+            st.info("Always verify job offers from official websites.")
+
+# ---------------- FOOTER ----------------
 st.markdown("---")
-
-st.subheader("⚠️ Scam Awareness Tips")
-st.markdown("""
-- Never pay registration or interview fees.
-- Do not share OTP or banking details.
-- Verify official company domain.
-- Avoid urgent payment requests.
-- Cross-check job offers on official websites.
-""")
-
-st.markdown("---")
-st.caption("Developed using Machine Learning, NLP & Streamlit | TYBCA 2026")
+st.markdown("<center>Developed by Sneha Jha | Sujit | Ashutosh | TYBCA 2026</center>", unsafe_allow_html=True)
