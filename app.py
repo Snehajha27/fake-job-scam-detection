@@ -1,128 +1,122 @@
 import streamlit as st
 import pandas as pd
+import re
 import matplotlib.pyplot as plt
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.naive_bayes import MultinomialNB
-from sklearn.metrics import accuracy_score, confusion_matrix
+from sklearn.metrics import accuracy_score
 
 st.set_page_config(page_title="Fake Job Scam Detector", layout="centered")
 
-# ---------------- LOGIN SYSTEM ----------------
-if "logged_in" not in st.session_state:
-    st.session_state.logged_in = False
+# Dark Theme Styling
+st.markdown("""
+<style>
+body {
+    background-color: #0E1117;
+    color: white;
+}
+</style>
+""", unsafe_allow_html=True)
 
-def login():
-    st.title("🔐 Login Panel")
-    username = st.text_input("Username")
-    password = st.text_input("Password", type="password")
+# Title
+st.markdown("<h1 style='text-align: center; color: #00FFAA;'>Fake Job & Internship Scam Detection System</h1>", unsafe_allow_html=True)
 
-    if st.button("Login"):
-        if username == "admin" and password == "jspm123":
-            st.session_state.logged_in = True
-        else:
-            st.error("Invalid Credentials")
-
-if not st.session_state.logged_in:
-    login()
-    st.stop()
-
-# ---------------- MAIN DASHBOARD ----------------
-st.title("Fake Job & Internship Scam Detection System")
 st.markdown("### JSPM University - TYBCA Final Year Project")
 st.markdown("**Team Members:** Sneha Jha | Sujit | Ashutosh")
+
 st.markdown("---")
 
-# ---------------- LOAD DATA ----------------
-try:
-    data = pd.read_csv("dataset.csv")
-except:
-    st.error("dataset.csv not found. Please upload it.")
-    st.stop()
+# Load Dataset
+data = pd.read_csv("dataset.csv")
+X = data['text']
+y = data['label']
 
-# Validate dataset columns
-if "text" not in data.columns or "label" not in data.columns:
-    st.error("Dataset must contain 'text' and 'label' columns.")
-    st.stop()
-
-X = data["text"]
-y = data["label"]
-
-# ---------------- TRAIN MODEL ----------------
+# Train Model
 vectorizer = CountVectorizer()
 X_vectorized = vectorizer.fit_transform(X)
 
 model = MultinomialNB()
 model.fit(X_vectorized, y)
 
-# ---------------- MODEL METRICS ----------------
+# Calculate Accuracy
 predictions = model.predict(X_vectorized)
 accuracy = round(accuracy_score(y, predictions) * 100, 2)
 
 st.success(f"Model Accuracy: {accuracy}%")
 
-st.subheader("Confusion Matrix")
+st.markdown("---")
 
-cm = confusion_matrix(y, predictions)
+# Show Dataset Graph
+fake_count = sum(y == 1)
+genuine_count = sum(y == 0)
 
 fig, ax = plt.subplots()
-ax.imshow(cm, cmap="Blues")
-ax.set_xlabel("Predicted")
-ax.set_ylabel("Actual")
-ax.set_xticks([0, 1])
-ax.set_yticks([0, 1])
-ax.set_xticklabels(["Genuine", "Fake"])
-ax.set_yticklabels(["Genuine", "Fake"])
-
-for i in range(2):
-    for j in range(2):
-        ax.text(j, i, cm[i, j], ha="center", va="center", color="black")
-
+ax.bar(["Fake", "Genuine"], [fake_count, genuine_count])
 st.pyplot(fig)
 
 st.markdown("---")
 
-# ---------------- MESSAGE ANALYSIS ----------------
-st.subheader("Analyze Job / Internship Message")
+# Scam Keywords
+scam_keywords = ["fee", "registration", "OTP", "urgent", "limited seats", "payment", "click here", "guaranteed"]
 
-msg = st.text_area("Enter Message Here")
+def contains_suspicious_url(text):
+    urls = re.findall(r'(https?://\S+)', text)
+    suspicious = []
+    for url in urls:
+        if not any(domain in url for domain in ["tcs.com", "infosys.com", "wipro.com"]):
+            suspicious.append(url)
+    return suspicious
 
-if st.button("Analyze"):
+# User Input
+st.subheader("Enter Job / Internship Message Below:")
+msg = st.text_area("")
+
+if st.button("Analyze Message"):
     if msg.strip() == "":
         st.warning("Please enter a message first.")
     else:
         vect = vectorizer.transform([msg])
         prediction = model.predict(vect)
-        prob = model.predict_proba(vect)
+        probability = model.predict_proba(vect)
 
-        fake_prob = round(prob[0][1] * 100, 2)
-        genuine_prob = round(prob[0][0] * 100, 2)
+        fake_prob = round(probability[0][1] * 100, 2)
+        genuine_prob = round(probability[0][0] * 100, 2)
 
         if prediction[0] == 1:
-            st.error(f"⚠️ Fake Job Offer Detected ({fake_prob}%)")
+            result_text = f"Fake Job Offer Detected! (Confidence: {fake_prob}%)"
+            st.error(result_text)
         else:
-            st.success(f"✅ Genuine Job Offer ({genuine_prob}%)")
+            result_text = f"Genuine Job Offer (Confidence: {genuine_prob}%)"
+            st.success(result_text)
+
+        suspicious_urls = contains_suspicious_url(msg)
+        if suspicious_urls:
+            st.warning("Suspicious URL Detected:")
+            for url in suspicious_urls:
+                st.write(url)
+
+        detected_keywords = [word for word in scam_keywords if word.lower() in msg.lower()]
+        if detected_keywords:
+            st.info(f"Scam Keywords Found: {', '.join(detected_keywords)}")
+
+        # Download Report
+        st.download_button(
+            label="Download Analysis Report",
+            data=result_text,
+            file_name="analysis_report.txt",
+            mime="text/plain"
+        )
 
 st.markdown("---")
 
-# ---------------- SIMPLE CHATBOT ----------------
-st.subheader("🤖 Job Safety Chatbot")
-
-question = st.text_input("Ask something about job safety")
-
-if question:
-    q = question.lower()
-
-    if "fee" in q:
-        st.write("Never pay registration or interview fees.")
-    elif "otp" in q:
-        st.write("Do not share OTP with anyone.")
-    elif "bank" in q:
-        st.write("Do not share banking details.")
-    elif "domain" in q:
-        st.write("Verify official company website domain.")
-    else:
-        st.write("Always verify job offers from official company websites.")
+st.subheader("⚠️ Scam Awareness Tips")
+st.markdown("""
+- Never pay registration or interview fees.
+- Do not share OTP or banking details.
+- Verify official company domain.
+- Avoid urgent payment requests.
+- Cross-check job offers on official websites.
+""")
 
 st.markdown("---")
-st.caption("Developed using Machine Learning & NLP | TYBCA 2026")
-
+st.caption("Developed using Machine Learning, NLP & Streamlit | TYBCA 2026")
