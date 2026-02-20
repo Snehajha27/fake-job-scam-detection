@@ -8,7 +8,7 @@ import time
 
 st.set_page_config(
     page_title="JobShield AI",
-    page_icon="logo.png",
+    page_icon="logo.png.png",
     layout="wide"
 )
 
