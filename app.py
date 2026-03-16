@@ -3,21 +3,15 @@ import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.naive_bayes import MultinomialNB
 
-# ---------------- PAGE CONFIG ----------------
+st.set_page_config(page_title="JobShield AI", page_icon="🛡️", layout="wide")
 
-st.set_page_config(
-    page_title="JobShield AI",
-    page_icon="🛡️",
-    layout="wide"
-)
-
-# ---------------- LIGHT UI STYLE ----------------
+# ---------------- LIGHT UI ----------------
 
 st.markdown("""
 <style>
 
 .stApp{
-background-color:#f8fafc;
+background-color:#f1f5f9;
 }
 
 .title{
@@ -35,7 +29,7 @@ color:#475569;
 .card{
 background:white;
 padding:25px;
-border-radius:12px;
+border-radius:10px;
 box-shadow:0 4px 10px rgba(0,0,0,0.1);
 }
 
@@ -45,186 +39,186 @@ box-shadow:0 4px 10px rgba(0,0,0,0.1);
 # ---------------- LOGIN SESSION ----------------
 
 if "login" not in st.session_state:
-    st.session_state.login=False
+    st.session_state.login = False
 
-# ---------------- LOGIN PAGE (CLIENT SIDE) ----------------
+
+# ---------------- LOGIN PAGE ----------------
 
 def login():
 
     st.markdown('<p class="title">🛡 JobShield AI</p>', unsafe_allow_html=True)
     st.markdown('<p class="subtitle">Fake Job Detection System</p>', unsafe_allow_html=True)
 
-    col1,col2,col3=st.columns([1,2,1])
+    col1,col2,col3 = st.columns([1,2,1])
 
     with col2:
 
-        st.markdown('<div class="card">',unsafe_allow_html=True)
+        st.markdown('<div class="card">', unsafe_allow_html=True)
 
-        username=st.text_input("Username")
-        password=st.text_input("Password",type="password")
+        username = st.text_input("Username")
+        password = st.text_input("Password", type="password")
 
         if st.button("Login"):
 
-            if username=="admin" and password=="1234":
-
-                st.session_state.login=True
+            if username == "admin" and password == "1234":
+                st.session_state.login = True
                 st.success("Login Successful")
                 st.rerun()
 
             else:
                 st.error("Invalid Credentials")
 
-        st.markdown('</div>',unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
+
 
 # ---------------- SERVER SIDE MODEL ----------------
 
 def load_model():
 
-    data=pd.read_csv("dataset.csv")
+    data = pd.read_csv("dataset.csv")
 
-    X=data["text"]
-    y=data["label"]
+    X = data["text"]
+    y = data["label"]
 
-    vectorizer=TfidfVectorizer()
+    vectorizer = TfidfVectorizer()
 
-    X_vec=vectorizer.fit_transform(X)
+    X_vec = vectorizer.fit_transform(X)
 
-    model=MultinomialNB()
-    model.fit(X_vec,y)
+    model = MultinomialNB()
 
-    return vectorizer,model
+    model.fit(X_vec, y)
+
+    return vectorizer, model, data
 
 
-# ---------------- MAIN APPLICATION ----------------
+# ---------------- MAIN APP ----------------
 
 def app():
 
-    vectorizer,model=load_model()
+    vectorizer, model, data = load_model()
 
     st.sidebar.title("Navigation")
 
-    menu=st.sidebar.radio(
-        "Select Module",
-        ["Dashboard","Fake Job Detector","Email Checker","URL Checker","System Architecture"]
+    menu = st.sidebar.radio(
+        "Select Page",
+        ["Dashboard","Client Side","Server Side"]
     )
 
 # ---------------- DASHBOARD ----------------
 
-    if menu=="Dashboard":
+    if menu == "Dashboard":
 
-        st.markdown("## Project Overview")
+        st.title("System Dashboard")
 
-        col1,col2,col3=st.columns(3)
+        st.write("This system follows **Client – Server Architecture**")
 
-        col1.info("🧠 Machine Learning Model")
-        col2.info("📧 Email Scam Detection")
-        col3.info("🌐 URL Scam Detection")
+        col1,col2 = st.columns(2)
 
-        st.write("""
-This system detects **fake job offers and internship scams** using
-Natural Language Processing and Machine Learning.
-
-The application follows a **Client–Server Architecture**.
+        with col1:
+            st.markdown("### Client Side Responsibilities")
+            st.write("""
+• User Login  
+• User Interface  
+• Message Input  
+• Email Input  
+• URL Input  
+• Sending request to server
 """)
 
-# ---------------- FAKE JOB DETECTOR ----------------
-
-    elif menu=="Fake Job Detector":
-
-        st.markdown("## Fake Job Message Detection")
-
-        message=st.text_area("Enter Job Message")
-
-        if st.button("Analyze Message"):
-
-            vec=vectorizer.transform([message])
-
-            result=model.predict(vec)[0]
-
-            probability=model.predict_proba(vec).max()*100
-
-            if result=="Fake":
-
-                st.error("⚠ Fake Job Detected")
-
-                st.progress(int(probability))
-
-                st.write(f"Confidence: {probability:.2f}%")
-
-            else:
-
-                st.success("✅ Genuine Job Message")
-
-                st.progress(int(probability))
-
-                st.write(f"Confidence: {probability:.2f}%")
-
-# ---------------- EMAIL CHECKER ----------------
-
-    elif menu=="Email Checker":
-
-        st.markdown("## Email Scam Checker")
-
-        email=st.text_input("Enter Email Address")
-
-        if st.button("Check Email"):
-
-            if "gmail.com" in email or "yahoo.com" in email:
-
-                st.warning("Free email domain detected")
-
-            elif "hr" in email or "job" in email:
-
-                st.info("Job related email detected")
-
-            else:
-
-                st.success("Email looks safe")
-
-# ---------------- URL CHECKER ----------------
-
-    elif menu=="URL Checker":
-
-        st.markdown("## URL Scam Detection")
-
-        url=st.text_input("Enter Website URL")
-
-        if st.button("Analyze URL"):
-
-            if "xyz" in url or "free" in url:
-
-                st.error("Suspicious Website")
-
-            elif "https" in url:
-
-                st.success("Secure Website")
-
-            else:
-
-                st.warning("Website may not be secure")
-
-# ---------------- SYSTEM ARCHITECTURE ----------------
-
-    elif menu=="System Architecture":
-
-        st.markdown("## Client – Server Architecture")
-
-        st.write("""
-CLIENT SIDE
-
-• Login Interface  
-• User enters job message / email / URL  
-• Sends request to server  
-
-SERVER SIDE
-
-• Machine Learning Model  
+        with col2:
+            st.markdown("### Server Side Responsibilities")
+            st.write("""
+• Dataset storage  
 • Text preprocessing  
+• Feature extraction (TF-IDF)  
+• Machine Learning model  
 • Fake job classification  
-• Returns prediction result  
-
-The server processes the request and sends the result back to the client interface.
+• Sending result back to client
 """)
+
+# ---------------- CLIENT SIDE ----------------
+
+    elif menu == "Client Side":
+
+        st.title("Client Side Interface")
+
+        option = st.selectbox(
+            "Choose Service",
+            ["Fake Job Detection","Email Checker","URL Checker"]
+        )
+
+        if option == "Fake Job Detection":
+
+            message = st.text_area("Enter Job Message")
+
+            if st.button("Send to Server"):
+
+                vec = vectorizer.transform([message])
+
+                prediction = model.predict(vec)[0]
+
+                probability = model.predict_proba(vec).max()*100
+
+                if prediction == "Fake":
+                    st.error("⚠ Fake Job Detected")
+                    st.write(f"Confidence: {probability:.2f}%")
+
+                else:
+                    st.success("✅ Genuine Job Message")
+                    st.write(f"Confidence: {probability:.2f}%")
+
+        elif option == "Email Checker":
+
+            email = st.text_input("Enter Email Address")
+
+            if st.button("Send to Server"):
+
+                if "gmail.com" in email or "yahoo.com" in email:
+                    st.warning("Free email domain detected")
+
+                elif "hr" in email or "job" in email:
+                    st.info("Job related email")
+
+                else:
+                    st.success("Email seems safe")
+
+        elif option == "URL Checker":
+
+            url = st.text_input("Enter Website URL")
+
+            if st.button("Send to Server"):
+
+                if "xyz" in url or "free" in url:
+                    st.error("Suspicious website")
+
+                elif "https" in url:
+                    st.success("Secure website")
+
+                else:
+                    st.warning("Website may not be secure")
+
+# ---------------- SERVER SIDE ----------------
+
+    elif menu == "Server Side":
+
+        st.title("Server Side Processing")
+
+        st.write("Server handles data processing and machine learning prediction.")
+
+        st.markdown("### Dataset Stored on Server")
+        st.dataframe(data)
+
+        st.markdown("### Machine Learning Pipeline")
+
+        st.write("""
+1️⃣ Text Cleaning  
+2️⃣ Feature Extraction (TF-IDF)  
+3️⃣ Model Training (Naive Bayes)  
+4️⃣ Prediction Generation  
+5️⃣ Response sent back to Client
+""")
+
+        st.success("Server ready to process requests from client")
 
 
 # ---------------- RUN APP ----------------
