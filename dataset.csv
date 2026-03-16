@@ -3,3 +3,13 @@ Pay registration fee for job,1
 Internship at TCS with stipend,0
 Send OTP to confirm job,1
 Interview at Infosys tomorrow,0
+| text                                                  | label |
+| ----------------------------------------------------- | ----- |
+| Congratulations you are selected pay registration fee | Fake  |
+| Amazon hiring software engineer apply now             | Real  |
+| Internship available pay 500 registration fee         | Fake  |
+| TCS campus hiring program apply                       | Real  |
+| Urgent job opportunity send OTP to confirm            | Fake  |
+| Google internship open for students                   | Real  |
+| Pay 1000 to activate job profile                      | Fake  |
+| Microsoft hiring freshers apply online                | Real  |
