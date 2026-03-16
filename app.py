@@ -3,6 +3,7 @@ import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.naive_bayes import MultinomialNB
 
+# Page config
 st.set_page_config(page_title="JobShield AI", page_icon="🛡️", layout="wide")
 
 # ---------- STYLING ----------
@@ -10,12 +11,12 @@ st.set_page_config(page_title="JobShield AI", page_icon="🛡️", layout="wide"
 st.markdown("""
 <style>
 
-.stApp {
+.stApp{
 background: linear-gradient(135deg,#0f172a,#1e293b);
 color:white;
 }
 
-.title {
+.title{
 text-align:center;
 font-size:45px;
 font-weight:bold;
@@ -34,12 +35,6 @@ border-radius:15px;
 box-shadow:0 4px 15px rgba(0,0,0,0.4);
 }
 
-.metric{
-font-size:25px;
-font-weight:bold;
-color:#4ade80;
-}
-
 </style>
 """, unsafe_allow_html=True)
 
@@ -48,14 +43,13 @@ color:#4ade80;
 if "login" not in st.session_state:
     st.session_state.login = False
 
+
 # ---------- LOGIN PAGE ----------
 
 def login():
 
     st.markdown('<p class="title">🛡 JobShield AI</p>', unsafe_allow_html=True)
     st.markdown('<p class="subtitle">Fake Job Detection System</p>', unsafe_allow_html=True)
-
-    st.write("")
 
     col1,col2,col3 = st.columns([1,2,1])
 
@@ -78,7 +72,8 @@ def login():
 
         st.markdown('</div>', unsafe_allow_html=True)
 
-# ---------- LOAD MODEL ----------
+
+# ---------- LOAD DATA & MODEL ----------
 
 def load_model():
 
@@ -88,7 +83,6 @@ def load_model():
     y = data["label"]
 
     vectorizer = TfidfVectorizer()
-
     X_vec = vectorizer.fit_transform(X)
 
     model = MultinomialNB()
@@ -96,16 +90,17 @@ def load_model():
 
     return vectorizer, model, data
 
-# ---------- MAIN APP ----------
+
+# ---------- MAIN APPLICATION ----------
 
 def app():
 
     vectorizer, model, data = load_model()
 
-    st.sidebar.title("🧭 Navigation")
+    st.sidebar.title("Navigation")
 
     menu = st.sidebar.radio(
-        "Select Page",
+        "Go to",
         ["Dashboard","Fake Job Detector","Email Checker","URL Checker","About"]
     )
 
@@ -113,22 +108,31 @@ def app():
 
     if menu == "Dashboard":
 
-        st.markdown("## 📊 Dashboard")
+        st.markdown("## 📊 Project Dashboard")
 
         total=len(data)
         fake=len(data[data.label=="Fake"])
         real=len(data[data.label=="Real"])
 
-        c1,c2,c3=st.columns(3)
+        col1,col2,col3=st.columns(3)
 
-        c1.metric("Total Messages",total)
-        c2.metric("Fake Jobs",fake)
-        c3.metric("Real Jobs",real)
+        col1.metric("Total Messages",total)
+        col2.metric("Fake Jobs",fake)
+        col3.metric("Real Jobs",real)
+
+        st.write("### Dataset Distribution")
+
+        chart_data=pd.DataFrame({
+            "Type":["Fake","Real"],
+            "Count":[fake,real]
+        })
+
+        st.bar_chart(chart_data.set_index("Type"))
 
         st.write("### Dataset Preview")
         st.dataframe(data)
 
-# ---------- JOB DETECTOR ----------
+# ---------- FAKE JOB DETECTOR ----------
 
     elif menu == "Fake Job Detector":
 
@@ -140,14 +144,27 @@ def app():
 
             vec = vectorizer.transform([message])
 
-            result = model.predict(vec)[0]
+            prediction = model.predict(vec)[0]
 
-            if result=="Fake":
-                st.error("⚠ This looks like a FAKE job message")
+            probability = model.predict_proba(vec).max()*100
+
+            if prediction=="Fake":
+
+                st.error(f"⚠ This looks like a FAKE job message")
+
+                st.progress(int(probability))
+
+                st.write(f"Confidence: **{probability:.2f}%**")
+
             else:
+
                 st.success("✅ This job message looks genuine")
 
-# ---------- EMAIL CHECK ----------
+                st.progress(int(probability))
+
+                st.write(f"Confidence: **{probability:.2f}%**")
+
+# ---------- EMAIL CHECKER ----------
 
     elif menu == "Email Checker":
 
@@ -158,26 +175,26 @@ def app():
         if st.button("Check Email"):
 
             if "gmail.com" in email or "yahoo.com" in email:
-                st.warning("⚠ Free email domain detected")
+                st.warning("⚠ Free email domain detected (may be suspicious)")
 
             elif "hr" in email or "job" in email:
                 st.info("ℹ Job related email")
 
             else:
-                st.success("✅ Email seems safe")
+                st.success("✅ Email appears safe")
 
-# ---------- URL CHECK ----------
+# ---------- URL CHECKER ----------
 
     elif menu == "URL Checker":
 
         st.markdown("## 🌐 URL Scam Detection")
 
-        url = st.text_input("Paste URL")
+        url = st.text_input("Paste Website URL")
 
         if st.button("Analyze URL"):
 
             if "xyz" in url or "free" in url:
-                st.error("⚠ Suspicious website")
+                st.error("⚠ Suspicious website detected")
 
             elif "https" in url:
                 st.success("✅ Secure website")
@@ -192,14 +209,20 @@ def app():
         st.markdown("## 📘 About Project")
 
         st.write("""
-JobShield AI is a Machine Learning based system that detects fake job messages, phishing emails and scam URLs.
+**JobShield AI** is a Machine Learning based system that detects fake job offers and internship scams.
 
-Technologies Used
-• Python  
-• Streamlit  
-• TF-IDF  
-• Naive Bayes Machine Learning
+Features:
+• Fake Job Message Detection  
+• Email Scam Checker  
+• URL Phishing Detection  
+
+Technology Used:
+- Python
+- Streamlit
+- TF-IDF
+- Naive Bayes Machine Learning
 """)
+
 
 # ---------- RUN ----------
 
