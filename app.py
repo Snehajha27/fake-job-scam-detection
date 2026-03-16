@@ -3,101 +3,180 @@ import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.naive_bayes import MultinomialNB
 
-st.set_page_config(page_title="JobShield AI", layout="wide")
+# ---------------- PAGE CONFIG ----------------
 
-st.title("🛡 JobShield AI")
-st.subheader("Fake Job, Email & URL Detection System")
-
-# Load dataset
-data = pd.read_csv("dataset.csv")
-
-X = data["text"]
-y = data["label"]
-
-# Vectorization
-vectorizer = TfidfVectorizer()
-X_vec = vectorizer.fit_transform(X)
-
-# Model training
-model = MultinomialNB()
-model.fit(X_vec, y)
-
-menu = st.sidebar.selectbox(
-    "Navigation",
-    ["Home","Job Message Detection","Email Checker","URL Checker"]
+st.set_page_config(
+    page_title="JobShield AI",
+    page_icon="🛡️",
+    layout="wide"
 )
 
-# ---------------- HOME ----------------
+# ---------------- LOGIN SYSTEM ----------------
 
-if menu == "Home":
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
 
-    st.write("### Welcome to JobShield AI")
+def login():
 
-    st.write("""
-    This system detects:
-    
-    • Fake job messages  
-    • Suspicious emails  
-    • Scam URLs
-    
-    Using Machine Learning.
-    """)
+    st.markdown(
+        """
+        <h1 style='text-align:center;'>🛡️ JobShield AI</h1>
+        <h3 style='text-align:center;'>Fake Job Detection System</h3>
+        """,
+        unsafe_allow_html=True
+    )
 
-# ---------------- JOB MESSAGE ----------------
+    st.write("")
 
-elif menu == "Job Message Detection":
+    username = st.text_input("Username")
+    password = st.text_input("Password", type="password")
 
-    st.header("📩 Fake Job Message Detector")
+    if st.button("Login"):
 
-    message = st.text_area("Paste Job Message")
-
-    if st.button("Analyze Message"):
-
-        vec = vectorizer.transform([message])
-        prediction = model.predict(vec)[0]
-
-        if prediction == "Fake":
-            st.error("⚠ This looks like a FAKE job message")
+        if username == "admin" and password == "1234":
+            st.session_state.logged_in = True
+            st.success("Login Successful")
+            st.rerun()
         else:
-            st.success("✅ This job message looks genuine")
+            st.error("Invalid Credentials")
+
+# ---------------- LOAD MODEL ----------------
+
+@st.cache_data
+def load_model():
+
+    data = pd.read_csv("dataset.csv")
+
+    X = data["text"]
+    y = data["label"]
+
+    vectorizer = TfidfVectorizer()
+    X_vec = vectorizer.fit_transform(X)
+
+    model = MultinomialNB()
+    model.fit(X_vec, y)
+
+    return vectorizer, model, data
+
+# ---------------- MAIN APP ----------------
+
+def main_app():
+
+    vectorizer, model, data = load_model()
+
+    st.sidebar.title("Navigation")
+
+    menu = st.sidebar.radio(
+        "Go to",
+        [
+            "Dashboard",
+            "Fake Job Detector",
+            "Email Checker",
+            "URL Checker",
+            "About Project"
+        ]
+    )
+
+# ---------------- DASHBOARD ----------------
+
+    if menu == "Dashboard":
+
+        st.title("📊 Project Dashboard")
+
+        total = len(data)
+        fake = len(data[data.label == "Fake"])
+        real = len(data[data.label == "Real"])
+
+        col1, col2, col3 = st.columns(3)
+
+        col1.metric("Total Messages", total)
+        col2.metric("Fake Jobs", fake)
+        col3.metric("Real Jobs", real)
+
+        st.write("### Sample Dataset")
+        st.dataframe(data)
+
+# ---------------- JOB DETECTOR ----------------
+
+    elif menu == "Fake Job Detector":
+
+        st.title("🧠 Fake Job Message Detection")
+
+        message = st.text_area("Paste Job Message")
+
+        if st.button("Analyze Message"):
+
+            vec = vectorizer.transform([message])
+            prediction = model.predict(vec)[0]
+
+            if prediction == "Fake":
+                st.error("⚠ This appears to be a FAKE job message")
+            else:
+                st.success("✅ This job message looks genuine")
 
 # ---------------- EMAIL CHECKER ----------------
 
-elif menu == "Email Checker":
+    elif menu == "Email Checker":
 
-    st.header("📧 Email Scam Detector")
+        st.title("📧 Email Scam Checker")
 
-    email = st.text_input("Enter Email")
+        email = st.text_input("Enter Email Address")
 
-    if st.button("Check Email"):
+        if st.button("Check Email"):
 
-        if "gmail.com" in email or "yahoo.com" in email:
-            st.warning("⚠ Free email domains are often used in scams")
+            if "gmail.com" in email or "yahoo.com" in email:
+                st.warning("⚠ Free email domain – may be suspicious")
 
-        elif "hr" in email or "job" in email:
-            st.info("ℹ Job related email detected")
+            elif "hr" in email or "job" in email:
+                st.info("ℹ Job related email detected")
 
-        else:
-            st.success("✅ Email looks normal")
+            else:
+                st.success("✅ Email looks safe")
 
 # ---------------- URL CHECKER ----------------
 
-elif menu == "URL Checker":
+    elif menu == "URL Checker":
 
-    st.header("🌐 URL Scam Detector")
+        st.title("🌐 URL Scam Detection")
 
-    url = st.text_input("Paste URL")
+        url = st.text_input("Paste Website URL")
 
-    if st.button("Check URL"):
+        if st.button("Analyze URL"):
 
-        if "xyz" in url or "free" in url:
-            st.error("⚠ Suspicious website detected")
+            if "xyz" in url or "free" in url:
+                st.error("⚠ Suspicious URL detected")
 
-        elif "https" in url:
-            st.success("✅ Secure website")
+            elif "https" in url:
+                st.success("✅ Secure website")
 
-        else:
-            st.warning("⚠ Website may not be secure")
+            else:
+                st.warning("⚠ Website may not be secure")
 
-st.sidebar.markdown("---")
-st.sidebar.write("Developed by TYBCA Students")
+# ---------------- ABOUT ----------------
+
+    elif menu == "About Project":
+
+        st.title("📘 About Project")
+
+        st.write("""
+        **JobShield AI** is a machine learning based system that detects fake job
+        offers and internship scams.
+
+        Features:
+        • Fake Job Message Detection  
+        • Email Scam Detection  
+        • URL Phishing Detection  
+
+        Technology Used:
+        - Python
+        - Streamlit
+        - TF-IDF
+        - Naive Bayes Machine Learning
+        """)
+
+# ---------------- RUN APP ----------------
+
+if st.session_state.logged_in:
+    main_app()
+else:
+    login()
