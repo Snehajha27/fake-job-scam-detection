@@ -1,105 +1,104 @@
 import streamlit as st
 import re
+import time
 from urllib.parse import urlparse
 
-st.set_page_config(page_title="AI Fake Job Detector", layout="centered")
+st.set_page_config(page_title="AI Scam Detector", layout="centered")
 
-# -----------------------------
+# -------------------------
+# Custom Styling (Dark UI)
+# -------------------------
+st.markdown("""
+<style>
+body {background-color: #0e1117;}
+.chat-box {
+    padding: 12px;
+    border-radius: 10px;
+    margin-bottom: 10px;
+}
+.user {background-color: #1f2937; text-align: right;}
+.bot {background-color: #111827;}
+</style>
+""", unsafe_allow_html=True)
+
+# -------------------------
 # Detection Logic
-# -----------------------------
-def analyze_text(text):
+# -------------------------
+def analyze(text):
     score = 0
     reasons = []
 
-    suspicious_keywords = [
+    keywords = [
         "earn money fast", "no experience", "limited seats",
         "registration fee", "pay now", "guaranteed job",
-        "instant joining", "work from home", "whatsapp only"
+        "instant joining", "whatsapp only"
     ]
 
-    for word in suspicious_keywords:
-        if word in text.lower():
+    for k in keywords:
+        if k in text.lower():
             score += 1
-            reasons.append(f"⚠️ Suspicious phrase: {word}")
+            reasons.append(f"⚠️ Suspicious phrase: {k}")
 
-    # Email detection
-    emails = re.findall(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}", text)
-    for email in emails:
-        if any(x in email for x in ["gmail", "yahoo", "hotmail"]):
+    # Emails
+    emails = re.findall(r"\S+@\S+", text)
+    for e in emails:
+        if any(x in e for x in ["gmail", "yahoo"]):
             score += 1
-            reasons.append(f"⚠️ Personal email used: {email}")
+            reasons.append(f"⚠️ Personal email: {e}")
 
-    # URL detection
+    # URLs
     urls = re.findall(r"https?://\S+", text)
-    for url in urls:
-        domain = urlparse(url).netloc
-        if not any(x in domain for x in ["linkedin", "naukri", "indeed"]):
+    for u in urls:
+        domain = urlparse(u).netloc
+        if not any(x in domain for x in ["linkedin", "indeed", "naukri"]):
             score += 1
-            reasons.append(f"⚠️ Unverified URL: {domain}")
+            reasons.append(f"⚠️ Unknown site: {domain}")
 
-    # Payment check
-    if "fee" in text.lower() or "payment" in text.lower():
+    if "fee" in text.lower():
         score += 2
-        reasons.append("🚨 Payment request detected")
+        reasons.append("🚨 Payment requested")
 
     # Decision
     if score >= 4:
-        result = "FAKE"
+        return "FAKE", score, reasons
     elif score >= 2:
-        result = "SUSPICIOUS"
+        return "SUSPICIOUS", score, reasons
     else:
-        result = "REAL"
-
-    return result, score, reasons, emails, urls
+        return "REAL", score, reasons
 
 
-# -----------------------------
-# UI Design (Chatbot Style)
-# -----------------------------
+# -------------------------
+# Chat System
+# -------------------------
+if "chat" not in st.session_state:
+    st.session_state.chat = []
+
 st.title("🤖 AI Fake Job & Scam Detector")
 
-st.markdown("### 💬 Chat with Detector")
+user_input = st.text_input("Type or paste job message...")
 
-user_input = st.text_area("Paste job message / email / URL")
+if st.button("Send 🚀"):
+    if user_input:
+        st.session_state.chat.append(("user", user_input))
 
-if st.button("Analyze Now 🚀"):
-    if user_input.strip() == "":
-        st.warning("Please enter some text")
+        result, score, reasons = analyze(user_input)
+
+        # Simulate typing
+        bot_reply = f"Analyzing...\n\nResult: {result}\nRisk Score: {score}/6"
+
+        st.session_state.chat.append(("bot", bot_reply))
+
+        for r in reasons:
+            st.session_state.chat.append(("bot", r))
+
+# -------------------------
+# Display Chat
+# -------------------------
+for role, msg in st.session_state.chat:
+    if role == "user":
+        st.markdown(f'<div class="chat-box user">{msg}</div>', unsafe_allow_html=True)
     else:
-        result, score, reasons, emails, urls = analyze_text(user_input)
-
-        # Chat UI simulation
-        st.markdown("#### 🤖 Bot Response:")
-
-        if result == "FAKE":
-            st.error(f"⚠️ High Risk: {result}")
-        elif result == "SUSPICIOUS":
-            st.warning(f"⚠️ Medium Risk: {result}")
-        else:
-            st.success(f"✅ Low Risk: {result}")
-
-        # Score meter
-        st.progress(min(score / 6, 1.0))
-
-        st.write(f"### 🔢 Risk Score: {score}/6")
-
-        # Reasons
-        if reasons:
-            st.write("### 📌 Why?")
-            for r in reasons:
-                st.write("-", r)
-
-        # Extracted Emails
-        if emails:
-            st.write("### 📧 Emails Found:")
-            for e in emails:
-                st.code(e)
-
-        # Extracted URLs
-        if urls:
-            st.write("### 🌐 URLs Found:")
-            for u in urls:
-                st.code(u)
+        st.markdown(f'<div class="chat-box bot">{msg}</div>', unsafe_allow_html=True)
 
 st.write("---")
-st.caption("Final Year Project | AI-based Fake Job Detection System")
+st.caption("AI Powered Fake Job Detection System 🚀")
