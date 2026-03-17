@@ -8,15 +8,30 @@ from sklearn.naive_bayes import MultinomialNB
 st.set_page_config(page_title="AI Scam Detector", layout="wide")
 
 # -------------------------
-# LOAD DATASET
+# DARK UI STYLE
+# -------------------------
+st.markdown("""
+<style>
+body {background-color: #0e1117;}
+h1, h2, h3 {color: #ffffff;}
+</style>
+""", unsafe_allow_html=True)
+
+# -------------------------
+# LOAD DATA
 # -------------------------
 data = pd.read_csv("data.csv")
 
-# Train ML model
 vectorizer = CountVectorizer()
 X = vectorizer.fit_transform(data["text"])
 model = MultinomialNB()
 model.fit(X, data["label"])
+
+# -------------------------
+# SESSION STORAGE
+# -------------------------
+if "history" not in st.session_state:
+    st.session_state.history = []
 
 # -------------------------
 # ANALYSIS FUNCTION
@@ -35,7 +50,7 @@ def analyze(text):
 
     emails = re.findall(r"\S+@\S+", text)
     for e in emails:
-        if "gmail" in e:
+        if "gmail" in e or "yahoo" in e:
             score += 1
             reasons.append(f"⚠️ Personal email: {e}")
 
@@ -54,25 +69,36 @@ def analyze(text):
     return final, prob, reasons
 
 # -------------------------
-# TABS UI
+# TABS
 # -------------------------
-tab1, tab2, tab3 = st.tabs(["🤖 Detector", "📊 Dashboard", "📁 Upload Dataset"])
+tab1, tab2, tab3, tab4 = st.tabs([
+    "🤖 Detector", 
+    "📊 Dashboard", 
+    "📁 Upload Dataset", 
+    "🧾 History"
+])
 
 # -------------------------
-# TAB 1: CHATBOT DETECTOR
+# TAB 1: DETECTOR
 # -------------------------
 with tab1:
     st.title("🤖 AI Scam Detection Chatbot")
 
-    user_input = st.text_input("Enter job message")
+    user_input = st.text_area("Paste job / email / URL")
 
-    if st.button("Analyze"):
+    if st.button("Analyze 🚀"):
         if user_input:
             result, prob, reasons = analyze(user_input)
 
+            # Save history
+            st.session_state.history.append({
+                "text": user_input,
+                "result": result,
+                "confidence": round(prob*100,2)
+            })
+
             st.subheader(f"Result: {result}")
             st.write(f"Confidence: {round(prob*100,2)}%")
-
             st.progress(prob)
 
             if reasons:
@@ -93,29 +119,49 @@ with tab2:
         st.bar_chart(data["label"].value_counts())
 
     with col2:
-        st.subheader("Text Length Analysis")
+        st.subheader("Text Length Trend")
         data["length"] = data["text"].apply(len)
         st.line_chart(data["length"])
 
-    st.subheader("Dataset Preview")
     st.dataframe(data)
 
 # -------------------------
-# TAB 3: UPLOAD DATASET
+# TAB 3: UPLOAD DATA
 # -------------------------
 with tab3:
-    st.title("📁 Upload Custom Dataset")
+    st.title("📁 Upload Dataset")
 
-    uploaded_file = st.file_uploader("Upload CSV", type=["csv"])
+    file = st.file_uploader("Upload CSV", type=["csv"])
 
-    if uploaded_file:
-        new_data = pd.read_csv(uploaded_file)
-        st.write("Preview:", new_data.head())
+    if file:
+        new_data = pd.read_csv(file)
+        st.write(new_data.head())
 
         X_new = vectorizer.fit_transform(new_data["text"])
         model.fit(X_new, new_data["label"])
 
         st.success("Model retrained successfully!")
 
+# -------------------------
+# TAB 4: HISTORY
+# -------------------------
+with tab4:
+    st.title("🧾 Detection History")
+
+    if st.session_state.history:
+        hist_df = pd.DataFrame(st.session_state.history)
+        st.dataframe(hist_df)
+
+        st.download_button(
+            "Download History",
+            hist_df.to_csv(index=False),
+            file_name="history.csv"
+        )
+    else:
+        st.info("No history yet")
+
+# -------------------------
+# FOOTER
+# -------------------------
 st.write("---")
-st.caption("Final Year Project | AI Fake Job Detection System 🚀")
+st.caption("🚀 Final Year Project | AI Fake Job Detection System (Final Boss Level)")
